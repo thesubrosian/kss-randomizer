@@ -27,7 +27,9 @@ namespace KirbyRandomizer
         List<int> elementFire = new List<int>() { 0x08, 0x09, 0x0A, 0x0B };
         List<int> elementElectric = new List<int>() { 0x0C, 0x0D, 0x0E, 0x0F };
         List<int> elementIce = new List<int>() { 0x10, 0x11, 0x12, 0x13 };
-        List<int> elementNormal2 = new List<int>() { 0x14, 0x15, 0x16, 0x17 };
+        List<int> elementNormal2 = new List<int>() { 0x14, 0x15, 0x16, 0x17 }; // unused
+
+        private const int KB_LEVELS = 4; // indexes 0..3
 
         uint enemyAbilityStart = 0x10426B;
         uint enemyAbilityEnd = 0x1042A5;
@@ -1359,28 +1361,28 @@ namespace KirbyRandomizer
             {
                 Dictionary<string, int> abilityKB = new Dictionary<string, int>()
                 {
-                    {"normal", rng.Next(0, 3)},
-                    {"cutter", rng.Next(0, 3)},
-                    {"beam", rng.Next(0, 3)},
-                    {"yo-yo", rng.Next(0, 3)},
-                    {"ninja", rng.Next(0, 3)},
-                    {"wing", rng.Next(0, 3)},
-                    {"fighter", rng.Next(0, 3)},
-                    {"jet", rng.Next(0, 3)},
-                    {"sword", rng.Next(0, 3)},
-                    {"fire", rng.Next(0, 3)},
-                    {"stone", rng.Next(0, 3)},
-                    {"plasma", rng.Next(0, 3)},
-                    {"wheel", rng.Next(0, 3)},
-                    {"bomb", rng.Next(0, 3)},
-                    {"ice", rng.Next(0, 3)},
-                    {"mirror", rng.Next(0, 3)},
-                    {"suplex", rng.Next(0, 3)},
-                    {"hammer", rng.Next(0, 3)},
-                    {"parasol", rng.Next(0, 3)},
-                    {"mike", rng.Next(0, 3)},
-                    {"paint", rng.Next(0, 3)},
-                    {"crash", rng.Next(0, 3)}
+                    {"normal", rng.Next(0, KB_LEVELS)},
+                    {"cutter", rng.Next(0, KB_LEVELS)},
+                    {"beam", rng.Next(0, KB_LEVELS)},
+                    {"yo-yo", rng.Next(0, KB_LEVELS)},
+                    {"ninja", rng.Next(0, KB_LEVELS)},
+                    {"wing", rng.Next(0, KB_LEVELS)},
+                    {"fighter", rng.Next(0, KB_LEVELS)},
+                    {"jet", rng.Next(0, KB_LEVELS)},
+                    {"sword", rng.Next(0, KB_LEVELS)},
+                    {"fire", rng.Next(0, KB_LEVELS)},
+                    {"stone", rng.Next(0, KB_LEVELS)},
+                    {"plasma", rng.Next(0, KB_LEVELS)},
+                    {"wheel", rng.Next(0, KB_LEVELS)},
+                    {"bomb", rng.Next(0, KB_LEVELS)},
+                    {"ice", rng.Next(0, KB_LEVELS)},
+                    {"mirror", rng.Next(0, KB_LEVELS)},
+                    {"suplex", rng.Next(0, KB_LEVELS)},
+                    {"hammer", rng.Next(0, KB_LEVELS)},
+                    {"parasol", rng.Next(0, KB_LEVELS)},
+                    {"mike", rng.Next(0, KB_LEVELS)},
+                    {"paint", rng.Next(0, KB_LEVELS)},
+                    {"crash", rng.Next(0, KB_LEVELS)}
                 };
                 int kb = 0;
                 for (uint i = hitboxPhysStart; i <= hitboxProjEnd; i++)
@@ -1517,12 +1519,12 @@ namespace KirbyRandomizer
                     //Physical Attacks
                     if (i == 0x081E17 || i == 0x081E18 || i == 0x081E18 || i == 0x081E19 || i == 0x081E1A || i == 0x081E1E || i == 0x081E1F || i == 0x081E21 || i == 0x081E2B || i == 0x081E31 || i == 0x081E32 || i == 0x081E3A || i == 0x081E3C || i == 0x081E3E || i == 0x081E42 || i == 0x081E46 || i == 0x081E4E || i == 0x081E54 || i == 0x081E55 || i == 0x081E56 || i == 0x081E5A || i == 0x081E66 || i == 0x081E6A || i == 0x081E6C || i == 0x081E70 || i == 0x081E7D || i == 0x081E81 || i == 0x081E85 || i == 0x081E88 || i == 0x081E8C || i == 0x081E90 || i == 0x081E95 || i == 0x081E9F || i == 0x081EA7 || i == 0x081EAA || i == 0x081E99 || i == 0x081EAA || i == 0x081EB2 || i == 0x081EB3 || i == 0x081EC7 || i == 0x081EC8 || i == 0x081EC9 || i == 0x081ECA || i == 0x081ECB || i == 0x081ECE || i == 0x081ECF || i == 0x081ED0 || i == 0x081ED1 || i == 0x081EE1 || i == 0x081EE9 || i == 0x081EF1 || i == 0x081EF4 || i == 0x081EFC || i == 0x081EFD || i == 0x081EFE || i == 0x081F02 || i == 0x081F05 || i == 0x081F11 || i == 0x081F21 || i == 0x081F31 || i == 0x081F3D || i == 0x081F || i == 0x081F43 || i == 0x081F49 || i == 0x081F4E || i == 0x081F57 || i == 0x081F59 || i == 0x081F5D || i == 0x081F5E || i == 0x081F81 || i == 0x081F82 || i == 0x081F83 || i == 0x081F84 || i == 0x081F85)
                     {
-                        rng.Next(0, 3);
+                        rng.Next(0, KB_LEVELS);
                     }
                     //Projectiles
                     if (i == 0x08290E || i == 0x082912 || i == 0x082914 || i == 0x082916 || i == 0x08291B || i == 0x08291D || i == 0x08291E || i == 0x082920 || i == 0x082921 || i == 0x082922 || i == 0x082924 || i == 0x082925 || i == 0x082926 || i == 0x082927 || i == 0x082928 || i == 0x08292A || i == 0x08292B || i == 0x08292C || i == 0x08292F || i == 0x082930 || i == 0x082931 || i == 0x082932 || i == 0x082933 || i == 0x082934 || i == 0x082935 || i == 0x082936 || i == 0x082937 || i == 0x082938 || i == 0x082939 || i == 0x08293B || i == 0x08293C || i == 0x082944 || i == 0x082947 || i == 0x082948 || i == 0x08294E || i == 0x082950)
                     {
-                        rng.Next(0, 3);
+                        rng.Next(0, KB_LEVELS);
                     }
                     //Rolling stuff
                     if (elementNormal.Contains(data[i]))
@@ -1557,7 +1559,7 @@ namespace KirbyRandomizer
                 int kb = 0;
                 for (uint i = hitboxPhysStart; i <= hitboxPhysEnd; i++)
                 {
-                    kb = rng.Next(0, 3);
+                    kb = rng.Next(0, KB_LEVELS);
                     //Rolling stuff
                     if (elementNormal.Contains(data[i]))
                     {
@@ -1586,7 +1588,7 @@ namespace KirbyRandomizer
                 }
                 for (uint i = hitboxProjStart; i <= hitboxProjEnd; i++)
                 {
-                    kb = rng.Next(0, 3);
+                    kb = rng.Next(0, KB_LEVELS);
                     //Rolling stuff
                     if (elementNormal.Contains(data[i]))
                     {
@@ -1622,7 +1624,7 @@ namespace KirbyRandomizer
             if (randKB.Checked)
             {
                 randKBAbility.Enabled = true;
-                randKBAttacks.Enabled = true;
+                //randKBAttacks.Enabled = true;
                 randKBHitboxes.Enabled = true;
                 if (!randEnemies.Checked && !randElements.Checked)
                 {
@@ -1632,7 +1634,7 @@ namespace KirbyRandomizer
             if (!randKB.Checked)
             {
                 randKBAbility.Enabled = false;
-                randKBAttacks.Enabled = false;
+                //randKBAttacks.Enabled = false;
                 randKBHitboxes.Enabled = false;
                 if (!randEnemies.Checked && !randElements.Checked)
                 {
