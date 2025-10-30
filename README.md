@@ -1,5 +1,6 @@
 # Kirby Super Star Randomizer
 A randomization tool for Kirby Super Star, modified to initialize the seed value and record a history of seeds.
+
 (Mainly for my own personal use case of doing many runs, like that of a [hardcore permadeath ROM hack](https://app.box.com/s/cweehrcbm2d3r42qtyvug82vy0m25hzz) ([details](https://www.romhacking.net/forum/index.php?topic=23346.0)).)
 
 ## Current Features
