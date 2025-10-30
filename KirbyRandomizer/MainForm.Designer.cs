@@ -145,7 +145,7 @@
             this.groupBox5.Size = new System.Drawing.Size(314, 115);
             this.groupBox5.TabIndex = 9;
             this.groupBox5.TabStop = false;
-            this.groupBox5.Text = "Strength Settings";
+            this.groupBox5.Text = "Knockback Settings";
             // 
             // randKB
             // 
@@ -154,7 +154,7 @@
             this.randKB.Name = "randKB";
             this.randKB.Size = new System.Drawing.Size(179, 17);
             this.randKB.TabIndex = 3;
-            this.randKB.Text = "Randomize Copy Ability Strength";
+            this.randKB.Text = "Randomize Copy Ability Knockback";
             this.randKB.UseVisualStyleBackColor = true;
             this.randKB.CheckedChanged += new System.EventHandler(this.randKB_CheckedChanged);
             // 
