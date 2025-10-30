@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
@@ -60,6 +61,7 @@ namespace KirbyRandomizer
         public MainForm()
         {
             InitializeComponent();
+            randSeed.Text = NextSecurePositiveSeed().ToString();
         }
 
         private void loadMINT_Click(object sender, EventArgs e)
@@ -133,8 +135,24 @@ namespace KirbyRandomizer
             }
         }
 
+        private sealed class SeedLogEntry
+        {
+            public int Seed;
+            public string OutputPath;
+            public DateTime Stamp;
+            public SeedLogEntry(int seed, string outputPath, DateTime stamp)
+            {
+                Seed = seed;
+                OutputPath = outputPath;
+                Stamp = stamp;
+            }
+        }
+
+
         private void randomize_Click(object sender, EventArgs e)
         {
+            var historyBatch = new List<SeedLogEntry>();
+
             // 0) Validate input ROM
             if (string.IsNullOrWhiteSpace(filePath.Text) || !File.Exists(filePath.Text))
             {
@@ -191,19 +209,21 @@ namespace KirbyRandomizer
             {
                 for (int i = 1; i <= count; i++)
                 {
-                    // ----- CHANGED: seed selection -----
+                    // Decide the seed that will be USED
+                    int seed;
                     if (count == 1)
                     {
-                        // single output: honor whatever is typed (or leave blank to let your code handle it)
-                        randSeed.Text = originalSeedText;
+                        // Single: honor what's in the box; if invalid/empty, generate a fresh one
+                        if (!int.TryParse(originalSeedText, out seed) || seed <= 0)
+                            seed = NextSecurePositiveSeed();
+                        randSeed.Text = seed.ToString(); // ensure your randomizer reads the same seed
                     }
                     else
                     {
-                        // bulk: always a fresh RANDOM seed (nonzero, positive 31-bit)
-                        int seed = NextSecurePositiveSeed();
+                        // Bulk: always fresh crypto-random
+                        seed = NextSecurePositiveSeed();
                         randSeed.Text = seed.ToString();
                     }
-                    // -----------------------------------
 
                     // fresh ROM source each time
                     byte[] ROMdata = File.ReadAllBytes(filePath.Text);
@@ -228,26 +248,22 @@ namespace KirbyRandomizer
                         ROMdata = tmp;
                     }
 
-                    // 3c) Decide output path for this iteration
+                    // Decide output path
                     string outPath;
-                    if (allowOverwrite)
-                    {
-                        outPath = filePath.Text;
-                    }
-                    else if (count == 1)
-                    {
-                        outPath = singleOutPath;
-                    }
-                    else
-                    {
-                        outPath = Path.Combine(folderOutPath, $"{baseName} Randomized-{i}.smc");
-                    }
+                    if (allowOverwrite) outPath = filePath.Text;
+                    else if (count == 1) outPath = singleOutPath;
+                    else outPath = Path.Combine(folderOutPath, $"{baseName} Randomized-{i}.smc");
 
-                    // 3d) Write file
+                    // Write file
                     File.WriteAllBytes(outPath, ROMdata);
+
+                    // Record for history
+                    historyBatch.Add(new SeedLogEntry(seed, Path.GetFullPath(outPath), DateTime.Now));
                 }
 
+
                 // 4) Done messages
+                try { AppendSeedsToHistory(historyBatch); } catch { /* ignore logging errors */ }
                 if (allowOverwrite)
                 {
                     MessageBox.Show($"Successfully randomized Kirby Super Star ROM!\nFile written to:\n{filePath.Text}", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
@@ -1460,7 +1476,6 @@ namespace KirbyRandomizer
             bool single = (nudHowManySeeds.Value == 1);
             randSeed.Enabled = single;
             label1.Enabled = single;
-            if (!single) randSeed.Text = string.Empty;
         }
 
         private void overwriteROM_CheckedChanged(object sender, EventArgs e)
@@ -1484,6 +1499,65 @@ namespace KirbyRandomizer
             }
         }
 
+        private void AppendSeedsToHistory(IEnumerable<SeedLogEntry> entries)
+        {
+            if (entries == null) return;
+
+            var byDate = entries
+                .GroupBy(e => e.Stamp.Date)
+                .OrderBy(g => g.Key)
+                .ToList();
+
+            string exeDir = Application.StartupPath;
+            string logPath = Path.Combine(exeDir, "seedhistory.txt");
+
+            var lines = File.Exists(logPath)
+                ? File.ReadAllLines(logPath).ToList()
+                : new List<string>();
+
+            foreach (var group in byDate)
+            {
+                string header = $"[{group.Key:yyyy-MM-dd}]";
+                var newLines = group
+                    .OrderBy(e => e.Stamp) // oldest -> newest
+                    .Select(e => $"Seed {e.Seed} for {e.OutputPath} at {e.Stamp.ToString("h:mm tt", CultureInfo.InvariantCulture)}")
+                    .ToList();
+
+                // find current top header (first non-empty line)
+                int firstIdx = lines.FindIndex(l => !string.IsNullOrWhiteSpace(l));
+                bool hasTopHeader = firstIdx >= 0 && lines[firstIdx] == header;
+
+                if (hasTopHeader)
+                {
+                    // append to today's section (scan until next header or EOF)
+                    int end = lines.Count;
+                    for (int j = firstIdx + 1; j < lines.Count; j++)
+                    {
+                        string l = lines[j];
+                        if (l.Length == 12 && l[0] == '[' && l[11] == ']' &&
+                            char.IsDigit(l[1]) && char.IsDigit(l[2]) && char.IsDigit(l[3]) && char.IsDigit(l[4]) &&
+                            l[5] == '-' && char.IsDigit(l[6]) && char.IsDigit(l[7]) &&
+                            l[8] == '-' && char.IsDigit(l[9]) && char.IsDigit(l[10]))
+                        {
+                            end = j; break;
+                        }
+                    }
+                    lines.InsertRange(end, newLines);
+                }
+                else
+                {
+                    // prepend new date section
+                    var prefix = new List<string>();
+                    prefix.Add(header);
+                    prefix.AddRange(newLines);
+                    if (lines.Count > 0) prefix.Add("");
+                    prefix.AddRange(lines);
+                    lines = prefix;
+                }
+            }
+
+            File.WriteAllLines(logPath, lines);
+        }
 
 
         private void MainForm_DragDrop(object sender, DragEventArgs e)
