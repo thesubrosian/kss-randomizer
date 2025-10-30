@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using System.IO;
 using Ookii.Dialogs.WinForms;
 using System.Security.Cryptography; // (already present if you used it before)
+using System.Text.RegularExpressions;
 
 namespace KirbyRandomizer
 {
@@ -148,12 +149,82 @@ namespace KirbyRandomizer
             }
         }
 
+        private static int GetMaxExistingRandomizedIndex(string folder, string baseName)
+        {
+            if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+                return 0;
+
+            int max = 0;
+            string prefix = baseName + " Randomized-";
+            foreach (var path in Directory.GetFiles(folder, baseName + " Randomized-*.smc"))
+            {
+                string name = Path.GetFileNameWithoutExtension(path);
+                if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    string tail = name.Substring(prefix.Length);
+                    if (int.TryParse(tail, out int n) && n > max)
+                        max = n;
+                }
+            }
+            return max;
+        }
+
+        private static string GetNextAvailableRandomizedPath(string folder, string baseName)
+        {
+            int next = GetMaxExistingRandomizedIndex(folder, baseName) + 1;
+            return Path.Combine(folder, $"{baseName} Randomized-{next}.smc");
+        }
+
+        // Scans for both: 
+        //   NEW  =>  baseName(-N)? [seed].smc     (N omitted means index 1)
+        //   OLD  =>  baseName Randomized-N.smc
+        private static int GetMaxExistingIndex(string folder, string baseName)
+        {
+            if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
+                return 0;
+
+            int max = 0;
+            string escaped = Regex.Escape(baseName);
+
+            // NEW pattern: "[baseName]" or "[baseName]-N", then space, then "[...]", then ".smc"
+            var rxNew = new Regex(@"^" + escaped + @"(?:-(\d+))?\s\[[^\]]+\]\.smc$", RegexOptions.IgnoreCase);
+
+            // OLD pattern: "[baseName] Randomized-N.smc"
+            var rxOld = new Regex(@"^" + escaped + @"\sRandomized-(\d+)\.smc$", RegexOptions.IgnoreCase);
+
+            foreach (var path in Directory.GetFiles(folder, "*.smc"))
+            {
+                string file = Path.GetFileName(path);
+
+                var mNew = rxNew.Match(file);
+                if (mNew.Success)
+                {
+                    int n = mNew.Groups[1].Success ? int.Parse(mNew.Groups[1].Value) : 1; // no "-N" => index 1
+                    if (n > max) max = n;
+                    continue;
+                }
+
+                var mOld = rxOld.Match(file);
+                if (mOld.Success && int.TryParse(mOld.Groups[1].Value, out int nOld) && nOld > max)
+                    max = nOld;
+            }
+            return max;
+        }
+
+        private static string ComposeRandomizedPath(string folder, string baseName, int index, int seed)
+        {
+            // index==1 => no "-1"
+            string indexPart = (index <= 1) ? "" : "-" + index.ToString();
+            string fileName = $"{baseName}{indexPart} [{seed}].smc"; // literal brackets in name
+            return Path.Combine(folder, fileName);
+        }
 
         private void randomize_Click(object sender, EventArgs e)
         {
             var historyBatch = new List<SeedLogEntry>();
+            var writtenPaths = new List<string>();
 
-            // 0) Validate input ROM
+            // 1) Validate input ROM
             if (string.IsNullOrWhiteSpace(filePath.Text) || !File.Exists(filePath.Text))
             {
                 MessageBox.Show("Select a valid base ROM first.", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
@@ -166,6 +237,7 @@ namespace KirbyRandomizer
 
             string baseDir = Path.GetDirectoryName(filePath.Text);
             string baseName = Path.GetFileNameWithoutExtension(filePath.Text);
+            string targetFolderForSingle = baseDir; // single-output defaults next to the base ROM
 
             // 2) Decide where to write
             // Overwrite means: write back to the original ROM path
@@ -196,6 +268,13 @@ namespace KirbyRandomizer
                     folderOutPath = dlg.SelectedPath;
                 }
             }
+
+            int startIndexForBulk = 0;
+            if (!allowOverwrite && count > 1)
+            {
+                startIndexForBulk = GetMaxExistingIndex(folderOutPath, baseName) + 1;
+            }
+
 
 
             // 3) Disable UI while working
@@ -248,14 +327,30 @@ namespace KirbyRandomizer
                         ROMdata = tmp;
                     }
 
-                    // Decide output path
+                    // Decide output path for this iteration
                     string outPath;
-                    if (allowOverwrite) outPath = filePath.Text;
-                    else if (count == 1) outPath = singleOutPath;
-                    else outPath = Path.Combine(folderOutPath, $"{baseName} Randomized-{i}.smc");
+                    if (allowOverwrite)
+                    {
+                        // Overwrite keeps writing back to the original path
+                        outPath = filePath.Text;
+                    }
+                    else if (count == 1)
+                    {
+                        // Single: continue after the highest existing in the input ROM’s folder
+                        int nextIndex = GetMaxExistingIndex(baseDir, baseName) + 1;
+                        outPath = ComposeRandomizedPath(baseDir, baseName, nextIndex, seed);
+                    }
+                    else
+                    {
+                        // Bulk: continue numbering from startIndexForBulk
+                        int index = startIndexForBulk + (i - 1);
+                        outPath = ComposeRandomizedPath(folderOutPath, baseName, index, seed);
+                    }
 
                     // Write file
                     File.WriteAllBytes(outPath, ROMdata);
+
+                    writtenPaths.Add(Path.GetFullPath(outPath));   // track the real, final path
 
                     // Record for history
                     historyBatch.Add(new SeedLogEntry(seed, Path.GetFullPath(outPath), DateTime.Now));
@@ -264,17 +359,20 @@ namespace KirbyRandomizer
 
                 // 4) Done messages
                 try { AppendSeedsToHistory(historyBatch); } catch { /* ignore logging errors */ }
-                if (allowOverwrite)
+                if (writtenPaths.Count == 1)
                 {
-                    MessageBox.Show($"Successfully randomized Kirby Super Star ROM!\nFile written to:\n{filePath.Text}", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
-                }
-                else if (count == 1)
-                {
-                    MessageBox.Show($"Successfully randomized Kirby Super Star ROM!\nFile written to:\n{singleOutPath}", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
+                    MessageBox.Show(
+                        "Successfully created:\n" + writtenPaths[0],
+                        "Kirby Super Star Randomizer",
+                        MessageBoxButtons.OK
+                    );
                 }
                 else
                 {
-                    MessageBox.Show($"Successfully created {count} randomized ROMs.\nFolder:\n{folderOutPath}", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Successfully created {writtenPaths.Count} randomized ROMs:");
+                    foreach (var p in writtenPaths) sb.AppendLine(p);
+                    MessageBox.Show(sb.ToString(), "Kirby Super Star Randomizer", MessageBoxButtons.OK);
                 }
             }
             catch (Exception ex)
