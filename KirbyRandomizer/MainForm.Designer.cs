@@ -56,6 +56,9 @@
             this.randomize = new System.Windows.Forms.Button();
             this.toolTip = new System.Windows.Forms.ToolTip(this.components);
             this.romRegion = new System.Windows.Forms.Label();
+            this.lblHowManySeeds = new System.Windows.Forms.Label();
+            this.nudHowManySeeds = new System.Windows.Forms.NumericUpDown();
+            ((System.ComponentModel.ISupportInitialize)(this.nudHowManySeeds)).BeginInit();
             this.randSettingsGroup.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.groupBox3.SuspendLayout();
@@ -66,22 +69,24 @@
             // 
             // randSettingsGroup
             // 
-            this.randSettingsGroup.Controls.Add(this.randSeed);
-            this.randSettingsGroup.Controls.Add(this.label1);
             this.randSettingsGroup.Controls.Add(this.groupBox1);
             this.randSettingsGroup.Controls.Add(this.groupBox3);
             this.randSettingsGroup.Controls.Add(this.groupBox2);
+            this.randSettingsGroup.Controls.Add(this.lblHowManySeeds);
+            this.randSettingsGroup.Controls.Add(this.nudHowManySeeds);
+            this.randSettingsGroup.Controls.Add(this.randSeed);
+            this.randSettingsGroup.Controls.Add(this.label1);
             this.randSettingsGroup.Enabled = false;
             this.randSettingsGroup.Location = new System.Drawing.Point(12, 62);
             this.randSettingsGroup.Name = "randSettingsGroup";
-            this.randSettingsGroup.Size = new System.Drawing.Size(339, 484);
+            this.randSettingsGroup.Size = new System.Drawing.Size(339, 516);
             this.randSettingsGroup.TabIndex = 0;
             this.randSettingsGroup.TabStop = false;
             this.randSettingsGroup.Text = "Randomizer Settings";
             // 
             // randSeed
             // 
-            this.randSeed.Location = new System.Drawing.Point(45, 458);
+            this.randSeed.Location = new System.Drawing.Point(45, 484);
             this.randSeed.Name = "randSeed";
             this.randSeed.Size = new System.Drawing.Size(288, 20);
             this.randSeed.TabIndex = 4;
@@ -90,7 +95,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(6, 461);
+            this.label1.Location = new System.Drawing.Point(6, 487);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(35, 13);
             this.label1.TabIndex = 3;
@@ -115,6 +120,8 @@
             this.overwriteROM.TabIndex = 2;
             this.overwriteROM.Text = "Overwrite old ROM";
             this.overwriteROM.UseVisualStyleBackColor = true;
+            this.overwriteROM.CheckedChanged += new System.EventHandler(this.overwriteROM_CheckedChanged);
+
             // 
             // groupBox3
             // 
@@ -322,12 +329,37 @@
             this.filePath.ReadOnly = true;
             this.filePath.Size = new System.Drawing.Size(225, 20);
             this.filePath.TabIndex = 2;
+
+            //
+            // how many seeds to generate
+            //
+            // ---- "How many output seeds" UI ----
+            // lblHowManySeeds  (below the big group box)
+            this.lblHowManySeeds.AutoSize = true;
+            this.lblHowManySeeds.Location = new System.Drawing.Point(6, 461);
+            this.lblHowManySeeds.Name = "lblHowManySeeds";
+            this.lblHowManySeeds.Size = new System.Drawing.Size(130, 13);
+            this.lblHowManySeeds.TabIndex = 100;
+            this.lblHowManySeeds.Text = "How many output seeds";
+
+            // nudHowManySeeds
+            this.nudHowManySeeds.Location = new System.Drawing.Point(140, 458);
+            this.nudHowManySeeds.Maximum = new decimal(new int[] { 1000, 0, 0, 0 });
+            this.nudHowManySeeds.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            this.nudHowManySeeds.Name = "nudHowManySeeds";
+            this.nudHowManySeeds.Size = new System.Drawing.Size(80, 20);
+            this.nudHowManySeeds.TabIndex = 101;
+            this.nudHowManySeeds.Value = new decimal(new int[] { 1, 0, 0, 0 });
+            this.nudHowManySeeds.ValueChanged += new System.EventHandler(this.nudHowManySeeds_ValueChanged);
+            this.nudHowManySeeds.TextChanged += new System.EventHandler(this.nudHowManySeeds_CommitWhileTyping);
+            this.nudHowManySeeds.KeyUp += new System.Windows.Forms.KeyEventHandler(this.nudHowManySeeds_CommitWhileTyping);
+
             // 
             // randomize
             // 
             this.randomize.Enabled = false;
             this.randomize.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.randomize.Location = new System.Drawing.Point(12, 552);
+            this.randomize.Location = new System.Drawing.Point(12, 584);
             this.randomize.Name = "randomize";
             this.randomize.Size = new System.Drawing.Size(339, 35);
             this.randomize.TabIndex = 3;
@@ -351,7 +383,7 @@
             this.AllowDrop = true;
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(363, 599);
+            this.ClientSize = new System.Drawing.Size(363, 631);
             this.Controls.Add(this.romRegion);
             this.Controls.Add(this.randomize);
             this.Controls.Add(this.filePath);
@@ -374,6 +406,7 @@
             this.groupBox4.PerformLayout();
             this.groupBox2.ResumeLayout(false);
             this.groupBox2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.nudHowManySeeds)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -407,6 +440,9 @@
         private System.Windows.Forms.RadioButton randKBAttacks;
         private System.Windows.Forms.GroupBox groupBox5;
         private System.Windows.Forms.GroupBox groupBox4;
+        private System.Windows.Forms.Label lblHowManySeeds;
+        private System.Windows.Forms.NumericUpDown nudHowManySeeds;
+
     }
 }
 

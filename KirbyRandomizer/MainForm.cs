@@ -8,6 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
+using Ookii.Dialogs.WinForms;
+using System.Security.Cryptography; // (already present if you used it before)
 
 namespace KirbyRandomizer
 {
@@ -18,7 +20,7 @@ namespace KirbyRandomizer
         uint hitboxProjStart = 0x08290E;
         uint hitboxProjEnd = 0x082950;
 
-        List<int> elementNormal = new List<int>(){ 0x00, 0x01, 0x02, 0x03 };
+        List<int> elementNormal = new List<int>() { 0x00, 0x01, 0x02, 0x03 };
         List<int> elementSharp = new List<int>() { 0x04, 0x05, 0x06, 0x07 };
         List<int> elementFire = new List<int>() { 0x08, 0x09, 0x0A, 0x0B };
         List<int> elementElectric = new List<int>() { 0x0C, 0x0D, 0x0E, 0x0F };
@@ -37,6 +39,23 @@ namespace KirbyRandomizer
         uint region = 0x0;
 
         Random rng = new Random();
+
+        private static readonly RandomNumberGenerator _rng = RandomNumberGenerator.Create();
+
+
+        private static int NextSecurePositiveSeed()
+        {
+            // Uniform in [1, int.MaxValue]
+            var bytes = new byte[4];
+            int v;
+            do
+            {
+                _rng.GetBytes(bytes);
+                v = BitConverter.ToInt32(bytes, 0) & int.MaxValue; // clears sign bit
+            } while (v == 0);
+            return v;
+        }
+
 
         public MainForm()
         {
@@ -116,61 +135,144 @@ namespace KirbyRandomizer
 
         private void randomize_Click(object sender, EventArgs e)
         {
-            byte[] ROMdata = File.ReadAllBytes(filePath.Text);
-            //Randomize Enemies
-            if (randEnemies.Checked)
+            // 0) Validate input ROM
+            if (string.IsNullOrWhiteSpace(filePath.Text) || !File.Exists(filePath.Text))
             {
-                if (randomizeAbilities(ROMdata) != null) {
-                    ROMdata = randomizeAbilities(ROMdata);
+                MessageBox.Show("Select a valid base ROM first.", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
+                return;
+            }
+
+            // How many outputs?
+            int count = overwriteROM.Checked ? 1 : (int)nudHowManySeeds.Value;
+            try { count = (int)nudHowManySeeds.Value; } catch { /* if control missing, default to 1 */ }
+
+            string baseDir = Path.GetDirectoryName(filePath.Text);
+            string baseName = Path.GetFileNameWithoutExtension(filePath.Text);
+
+            // 2) Decide where to write
+            // Overwrite means: write back to the original ROM path
+            bool allowOverwrite = overwriteROM.Checked;
+            string singleOutPath = null;
+            string folderOutPath = null;
+
+            if (allowOverwrite)
+            {
+                // write back to the original path later
+            }
+            else if (count == 1)
+            {
+                // Single file, keep it simple and mirror your naming scheme with -1
+                singleOutPath = Path.Combine(baseDir, $"{baseName} Randomized-1.smc");
+            }
+            else // count > 1
+            {
+                using (var dlg = new VistaFolderBrowserDialog
+                {
+                    Description = "Select output folder for randomized ROMs",
+                    UseDescriptionForTitle = true,
+                    ShowNewFolderButton = true,
+                    SelectedPath = baseDir
+                })
+                {
+                    if (dlg.ShowDialog(this) != DialogResult.OK) return;
+                    folderOutPath = dlg.SelectedPath;
+                }
+            }
+
+
+            // 3) Disable UI while working
+            bool oldEnabled = this.Enabled;
+            this.Enabled = false;
+
+            // Preserve original seed box text; we’ll tweak it per iteration for reproducibility
+            string originalSeedText = randSeed.Text;
+
+            try
+            {
+                for (int i = 1; i <= count; i++)
+                {
+                    // ----- CHANGED: seed selection -----
+                    if (count == 1)
+                    {
+                        // single output: honor whatever is typed (or leave blank to let your code handle it)
+                        randSeed.Text = originalSeedText;
+                    }
+                    else
+                    {
+                        // bulk: always a fresh RANDOM seed (nonzero, positive 31-bit)
+                        int seed = NextSecurePositiveSeed();
+                        randSeed.Text = seed.ToString();
+                    }
+                    // -----------------------------------
+
+                    // fresh ROM source each time
+                    byte[] ROMdata = File.ReadAllBytes(filePath.Text);
+
+                    // your existing randomization toggles (unchanged)
+                    if (randEnemies.Checked)
+                    {
+                        var tmp = randomizeAbilities(ROMdata);
+                        if (tmp == null) { MessageBox.Show("Error: Seed was not in correct format.", "Kirby Super Star Randomizer"); return; }
+                        ROMdata = tmp;
+                    }
+                    if (randElements.Checked)
+                    {
+                        var tmp = RandomizeHitboxElements(ROMdata);
+                        if (tmp == null) { MessageBox.Show("Error: Seed was not in correct format.", "Kirby Super Star Randomizer"); return; }
+                        ROMdata = tmp;
+                    }
+                    if (randKB.Checked)
+                    {
+                        var tmp = RandomizeHitboxKB(ROMdata);
+                        if (tmp == null) { MessageBox.Show("Error: Seed was not in correct format.", "Kirby Super Star Randomizer"); return; }
+                        ROMdata = tmp;
+                    }
+
+                    // 3c) Decide output path for this iteration
+                    string outPath;
+                    if (allowOverwrite)
+                    {
+                        outPath = filePath.Text;
+                    }
+                    else if (count == 1)
+                    {
+                        outPath = singleOutPath;
+                    }
+                    else
+                    {
+                        outPath = Path.Combine(folderOutPath, $"{baseName} Randomized-{i}.smc");
+                    }
+
+                    // 3d) Write file
+                    File.WriteAllBytes(outPath, ROMdata);
+                }
+
+                // 4) Done messages
+                if (allowOverwrite)
+                {
+                    MessageBox.Show($"Successfully randomized Kirby Super Star ROM!\nFile written to:\n{filePath.Text}", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
+                }
+                else if (count == 1)
+                {
+                    MessageBox.Show($"Successfully randomized Kirby Super Star ROM!\nFile written to:\n{singleOutPath}", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
                 }
                 else
                 {
-                    MessageBox.Show("Error: Seed was not in correct format.", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
-                    return;
+                    MessageBox.Show($"Successfully created {count} randomized ROMs.\nFolder:\n{folderOutPath}", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
                 }
             }
-            //Randomize Elements
-            if (randElements.Checked)
+            catch (Exception ex)
             {
-                if (RandomizeHitboxElements(ROMdata) != null)
-                {
-                    ROMdata = RandomizeHitboxElements(ROMdata);
-                }
-                else
-                {
-                    MessageBox.Show("Error: Seed was not in correct format.", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
-                    return;
-                }
+                MessageBox.Show("Error while generating ROM(s):\n" + ex.Message, "Kirby Super Star Randomizer", MessageBoxButtons.OK);
             }
-            //Randomize Strength
-            if (randKB.Checked)
+            finally
             {
-                if (RandomizeHitboxKB(ROMdata) != null)
-                {
-                    ROMdata = RandomizeHitboxKB(ROMdata);
-                }
-                else
-                {
-                    MessageBox.Show("Error: Seed was not in correct format.", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
-                    return;
-                }
-            }
-            //Overwrite ROM
-            if (overwriteROM.Checked)
-            {
-                File.WriteAllBytes(filePath.Text, ROMdata);
-                MessageBox.Show($"Successfully randomized Kirby Super Star ROM!\nFile written to:\n{filePath.Text}", "Kirby Super Star Randomizer", MessageBoxButtons.OK);
-            }
-            //Write to new file
-            if (!overwriteROM.Checked)
-            {
-                string[] path = filePath.Text.Split('\\');
-                path[path.Length - 1] = path[path.Length - 1].Replace(".smc", " Randomized.smc");
-                string newFile = string.Join("\\", path);
-                File.WriteAllBytes(newFile, ROMdata);
-                MessageBox.Show($"Successfully randomized Kirby Super Star ROM!\nFile written to:\n{newFile}", "Kirby Super Star Randomizer");
+                // restore UI and original seed text
+                randSeed.Text = originalSeedText;
+                this.Enabled = oldEnabled;
             }
         }
+
 
         public byte[] randomizeAbilities(byte[] data)
         {
@@ -1327,6 +1429,62 @@ namespace KirbyRandomizer
                 }
             }
         }
+
+        private void nudHowManySeeds_CommitWhileTyping(object sender, EventArgs e)
+        {
+            // Convert the typed text to a clamped Value on every edit so ValueChanged semantics apply
+            var nud = (NumericUpDown)sender;
+
+            // Try parse the current text; if it’s invalid, do nothing (user may still be typing)
+            if (decimal.TryParse(nud.Text, out var typed))
+            {
+                // clamp to [Minimum, Maximum]
+                if (typed < nud.Minimum) typed = nud.Minimum;
+                if (typed > nud.Maximum) typed = nud.Maximum;
+
+                if (nud.Value != typed)
+                {
+                    nud.Value = typed;  // this will trigger nudHowManySeeds_ValueChanged
+                }
+                else
+                {
+                    // Ensure the enabled/disabled state of Seed reflects a freshly-typed "1"
+                    nudHowManySeeds_ValueChanged(nud, EventArgs.Empty);
+                }
+            }
+        }
+
+        // keep your existing handler, or use this:
+        private void nudHowManySeeds_ValueChanged(object sender, EventArgs e)
+        {
+            bool single = (nudHowManySeeds.Value == 1);
+            randSeed.Enabled = single;
+            label1.Enabled = single;
+            if (!single) randSeed.Text = string.Empty;
+        }
+
+        private void overwriteROM_CheckedChanged(object sender, EventArgs e)
+        {
+            bool overwrite = overwriteROM.Checked;
+
+            // Disable/enable the bulk controls
+            lblHowManySeeds.Enabled = !overwrite;
+            nudHowManySeeds.Enabled = !overwrite;
+
+            if (overwrite)
+            {
+                // Force single-output; this also triggers ValueChanged -> re-enables Seed
+                if (nudHowManySeeds.Value != 1)
+                    nudHowManySeeds.Value = 1;
+            }
+            else
+            {
+                // Re-sync Seed enabled/disabled based on current count
+                nudHowManySeeds_ValueChanged(nudHowManySeeds, EventArgs.Empty);
+            }
+        }
+
+
 
         private void MainForm_DragDrop(object sender, DragEventArgs e)
         {
