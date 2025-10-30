@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.IO;
 using Ookii.Dialogs.WinForms;
-using System.Security.Cryptography; // (already present if you used it before)
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
 namespace KirbyRandomizer
