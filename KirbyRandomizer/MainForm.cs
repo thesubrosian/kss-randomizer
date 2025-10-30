@@ -141,13 +141,17 @@ namespace KirbyRandomizer
             public int Seed;
             public string OutputPath;
             public DateTime Stamp;
-            public SeedLogEntry(int seed, string outputPath, DateTime stamp)
+            public string Settings;  // <-- NEW
+
+            public SeedLogEntry(int seed, string outputPath, DateTime stamp, string settings)
             {
                 Seed = seed;
                 OutputPath = outputPath;
                 Stamp = stamp;
+                Settings = settings;
             }
         }
+
 
         private static int GetMaxExistingRandomizedIndex(string folder, string baseName)
         {
@@ -175,9 +179,6 @@ namespace KirbyRandomizer
             return Path.Combine(folder, $"{baseName} Randomized-{next}.smc");
         }
 
-        // Scans for both: 
-        //   NEW  =>  baseName(-N)? [seed].smc     (N omitted means index 1)
-        //   OLD  =>  baseName Randomized-N.smc
         private static int GetMaxExistingIndex(string folder, string baseName)
         {
             if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
@@ -186,10 +187,10 @@ namespace KirbyRandomizer
             int max = 0;
             string escaped = Regex.Escape(baseName);
 
-            // NEW pattern: "[baseName]" or "[baseName]-N", then space, then "[...]", then ".smc"
+            // New filenames: BaseName or BaseName-N, then space, then [ ... ], ending .smc
             var rxNew = new Regex(@"^" + escaped + @"(?:-(\d+))?\s\[[^\]]+\]\.smc$", RegexOptions.IgnoreCase);
 
-            // OLD pattern: "[baseName] Randomized-N.smc"
+            // Old filenames: BaseName Randomized-N.smc
             var rxOld = new Regex(@"^" + escaped + @"\sRandomized-(\d+)\.smc$", RegexOptions.IgnoreCase);
 
             foreach (var path in Directory.GetFiles(folder, "*.smc"))
@@ -199,7 +200,7 @@ namespace KirbyRandomizer
                 var mNew = rxNew.Match(file);
                 if (mNew.Success)
                 {
-                    int n = mNew.Groups[1].Success ? int.Parse(mNew.Groups[1].Value) : 1; // no "-N" => index 1
+                    int n = mNew.Groups[1].Success ? int.Parse(mNew.Groups[1].Value) : 1;
                     if (n > max) max = n;
                     continue;
                 }
@@ -211,16 +212,112 @@ namespace KirbyRandomizer
             return max;
         }
 
-        private static string ComposeRandomizedPath(string folder, string baseName, int index, int seed)
+        // Compose the new filename (index 1 => no "-1")
+        private static string ComposeRandomizedPath(string folder, string baseName, int index, int seed, string settingsCode)
         {
-            // index==1 => no "-1"
-            string indexPart = (index <= 1) ? "" : "-" + index.ToString();
-            string fileName = $"{baseName}{indexPart} [{seed}].smc"; // literal brackets in name
+            string indexPart = index <= 1 ? "" : "-" + index.ToString();
+            string fileName = $"{baseName}{indexPart} [{seed},{settingsCode}].smc";
             return Path.Combine(folder, fileName);
+        }
+
+        private string BuildSettingsSummary()
+        {
+            var parts = new List<string>();
+
+            // Enemy abilities
+            if (randEnemies.Checked)
+            {
+                var sub = new List<string>();
+                if (includeMinorEnemies.Checked) sub.Add("Minor");
+                if (randMiniBossAbilities.Checked) sub.Add("Mini");
+                if (randBossAbilities.Checked) sub.Add("Bosses");
+
+                string seg = "EnemyAbilities";
+                if (sub.Count > 0) seg += " +" + string.Join(",", sub);
+                parts.Add(seg);
+            }
+
+            // Elements (Copy Ability Elements)
+            if (randElements.Checked)
+            {
+                string mode =
+                      randOneElement.Checked ? "Ability"  // Per-Ability
+                    : randElementsEach.Checked ? "Attack"   // Per-Attack
+                    : randElementsHitboxes.Checked ? "Hitbox"   // Per-Hitbox
+                    : null;
+
+                if (mode != null) parts.Add("CopyElements Per-" + mode);
+            }
+
+            // Strength (Copy Ability Strength / Knockback)
+            if (randKB.Checked)
+            {
+                string mode =
+                      randKBAbility.Checked ? "Ability"  // Per-Ability
+                    : randKBAttacks.Checked ? "Attack"   // Per-Attack
+                    : randKBHitboxes.Checked ? "Hitbox"   // Per-Hitbox
+                    : null;
+
+                if (mode != null) parts.Add("CopyStrength Per-" + mode);
+            }
+
+            return parts.Count > 0 ? string.Join(" ", parts) : null;
+        }
+
+        // Build the short code that goes inside the square brackets after the seed.
+        private string BuildFilenameSettingsCode()
+        {
+            // Enemy abilities segment
+            string enemySeg;
+            if (!randEnemies.Checked)
+            {
+                enemySeg = "a";
+            }
+            else
+            {
+                // Order: Minor, Mini, Bosses (case = enabled)
+                char minor = includeMinorEnemies.Checked ? 'M' : 'm';
+                char mini = randMiniBossAbilities.Checked ? 'M' : 'm';
+                char boss = randBossAbilities.Checked ? 'B' : 'b';
+                enemySeg = "A" + new string(new[] { minor, mini, boss });
+            }
+
+            // Elements segment
+            string elemSeg;
+            if (!randElements.Checked)
+            {
+                elemSeg = "e";
+            }
+            else
+            {
+                string mode =
+                    randOneElement.Checked ? "AB" :   // Per-Ability
+                    randElementsEach.Checked ? "AT" :   // Per-Attack
+                    "H";                                   // Per-Hitbox
+                elemSeg = "E-" + mode;
+            }
+
+            // Strength segment
+            string strSeg;
+            if (!randKB.Checked)
+            {
+                strSeg = "s";
+            }
+            else
+            {
+                string mode =
+                    randKBAbility.Checked ? "AB" :
+                    randKBAttacks.Checked ? "AT" :
+                    "H";
+                strSeg = "S-" + mode;
+            }
+
+            return $"{enemySeg},{elemSeg},{strSeg}";
         }
 
         private void randomize_Click(object sender, EventArgs e)
         {
+            var settingsSummary = BuildSettingsSummary();
             var historyBatch = new List<SeedLogEntry>();
             var writtenPaths = new List<string>();
 
@@ -237,7 +334,8 @@ namespace KirbyRandomizer
 
             string baseDir = Path.GetDirectoryName(filePath.Text);
             string baseName = Path.GetFileNameWithoutExtension(filePath.Text);
-            string targetFolderForSingle = baseDir; // single-output defaults next to the base ROM
+            string targetFolderForSingle = baseDir; // single-output defaults next to the base ROM            
+            string settingsCode = BuildFilenameSettingsCode();
 
             // 2) Decide where to write
             // Overwrite means: write back to the original ROM path
@@ -331,29 +429,28 @@ namespace KirbyRandomizer
                     string outPath;
                     if (allowOverwrite)
                     {
-                        // Overwrite keeps writing back to the original path
+                        // Overwrite back to original file path
                         outPath = filePath.Text;
                     }
                     else if (count == 1)
                     {
-                        // Single: continue after the highest existing in the input ROM’s folder
+                        // Single: continue after highest existing in base ROM's folder
                         int nextIndex = GetMaxExistingIndex(baseDir, baseName) + 1;
-                        outPath = ComposeRandomizedPath(baseDir, baseName, nextIndex, seed);
+                        outPath = ComposeRandomizedPath(baseDir, baseName, nextIndex, seed, settingsCode);
                     }
                     else
                     {
-                        // Bulk: continue numbering from startIndexForBulk
+                        // Bulk: continue numbering from the computed start
                         int index = startIndexForBulk + (i - 1);
-                        outPath = ComposeRandomizedPath(folderOutPath, baseName, index, seed);
+                        outPath = ComposeRandomizedPath(folderOutPath, baseName, index, seed, settingsCode);
                     }
-
                     // Write file
                     File.WriteAllBytes(outPath, ROMdata);
 
                     writtenPaths.Add(Path.GetFullPath(outPath));   // track the real, final path
 
                     // Record for history
-                    historyBatch.Add(new SeedLogEntry(seed, Path.GetFullPath(outPath), DateTime.Now));
+                    historyBatch.Add(new SeedLogEntry(seed, Path.GetFullPath(outPath), DateTime.Now, settingsSummary));
                 }
 
 
@@ -1617,9 +1714,19 @@ namespace KirbyRandomizer
             {
                 string header = $"[{group.Key:yyyy-MM-dd}]";
                 var newLines = group
-                    .OrderBy(e => e.Stamp) // oldest -> newest
-                    .Select(e => $"Seed {e.Seed} for {e.OutputPath} at {e.Stamp.ToString("h:mm tt", CultureInfo.InvariantCulture)}")
+                    .OrderBy(e => e.Stamp) // oldest -> newest within the day
+                    .Select(e =>
+                    {
+                        var time = e.Stamp.ToString("h:mm tt", CultureInfo.InvariantCulture);
+                        // Base line
+                        string line = $"Seed {e.Seed} for {e.OutputPath} at {time}";
+                        // Append settings if any
+                        if (!string.IsNullOrWhiteSpace(e.Settings))
+                            line += ": " + e.Settings;
+                        return line;
+                    })
                     .ToList();
+
 
                 // find current top header (first non-empty line)
                 int firstIdx = lines.FindIndex(l => !string.IsNullOrWhiteSpace(l));
