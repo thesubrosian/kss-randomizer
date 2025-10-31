@@ -251,7 +251,7 @@ namespace KirbyRandomizer
                 if (mode != null) parts.Add("CopyElements Per-" + mode);
             }
 
-            // Strength (Copy Ability Strength / Knockback)
+            // Knockback (Copy Ability Strength / Knockback)
             if (randKB.Checked)
             {
                 string mode =
@@ -260,7 +260,7 @@ namespace KirbyRandomizer
                     : randKBHitboxes.Checked ? "Hitbox"   // Per-Hitbox
                     : null;
 
-                if (mode != null) parts.Add("CopyStrength Per-" + mode);
+                if (mode != null) parts.Add("CopyKnockback Per-" + mode);
             }
 
             return parts.Count > 0 ? string.Join(" ", parts) : null;
@@ -299,11 +299,11 @@ namespace KirbyRandomizer
                 elemSeg = "E-" + mode;
             }
 
-            // Strength segment
-            string strSeg;
+            // Knockback segment
+            string kbSeg;
             if (!randKB.Checked)
             {
-                strSeg = "s";
+                kbSeg = "k";
             }
             else
             {
@@ -311,10 +311,10 @@ namespace KirbyRandomizer
                     randKBAbility.Checked ? "AB" :
                     randKBAttacks.Checked ? "AT" :
                     "H";
-                strSeg = "S-" + mode;
+                kbSeg = "K-" + mode;
             }
 
-            return $"{enemySeg},{elemSeg},{strSeg}";
+            return $"{enemySeg},{elemSeg},{kbSeg}";
         }
 
         private void randomize_Click(object sender, EventArgs e)
