@@ -1,5 +1,5 @@
 # Kirby Super Star Randomizer
-A randomization tool for Kirby Super Star, modified to clarify what is randomized, initialize the seed value, include seed+settings into the randomized ROM name, record a history of seeds, and create ROM files in bulk.
+A randomization tool for Kirby Super Star, modified to clarify what is randomized, include seed+settings into the randomized ROM name, initialize the seed value, randomize knockback values over a wider range (which is valid), record a history of seeds, and create ROM files in bulk.
 
 (Mainly for my own personal use case of doing many runs, like those of a [hardcore permadeath ROM hack](https://www.romhacking.net/forum/index.php?topic=23346.0).)
 
