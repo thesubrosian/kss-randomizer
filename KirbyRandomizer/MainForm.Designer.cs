@@ -162,12 +162,12 @@
             // 
             this.randKBAttacks.AutoSize = true;
             this.randKBAttacks.Enabled = false;
-            this.randKBAttacks.Checked = false;                  // ensure not selected
+            //this.randKBAttacks.Checked = false;                  // ensure not selected
             this.randKBAttacks.Location = new System.Drawing.Point(26, 65);
             this.randKBAttacks.Name = "randKBAttacks";
             this.randKBAttacks.Size = new System.Drawing.Size(75, 17);
             this.randKBAttacks.TabIndex = 5;
-            this.randKBAttacks.Text = "Per-Attack (out of order)";
+            this.randKBAttacks.Text = "Per-Attack";
             this.randKBAttacks.UseVisualStyleBackColor = true;
             // 
             // randKBHitboxes
