@@ -1479,7 +1479,7 @@ namespace KirbyRandomizer
                     {
                         kb = abilityKB["crash"];
                     }
-                    //Rolling stuff
+                    // Converting the knockback level to that within the element type of the pre-existing data
                     if (elementNormal.Contains(data[i]))
                     {
                         data[i] = byte.Parse(elementNormal[kb].ToString());
@@ -1526,7 +1526,7 @@ namespace KirbyRandomizer
                     {
                         kb = rng.Next(0, KB_LEVELS);
                     }
-                    //Rolling stuff
+                    // Converting the knockback level to that within the element type of the pre-existing data
                     if (elementNormal.Contains(data[i]))
                     {
                         data[i] = byte.Parse(elementNormal[kb].ToString());
@@ -1557,10 +1557,11 @@ namespace KirbyRandomizer
             if (randKBHitboxes.Checked)
             {
                 int kb = 0;
+                // Physical attacks
                 for (uint i = hitboxPhysStart; i <= hitboxPhysEnd; i++)
                 {
                     kb = rng.Next(0, KB_LEVELS);
-                    //Rolling stuff
+                    // Convert the knockback level to that within the element type of the pre-existing data
                     if (elementNormal.Contains(data[i]))
                     {
                         data[i] = byte.Parse(elementNormal[kb].ToString());
@@ -1586,10 +1587,12 @@ namespace KirbyRandomizer
                         data[i] = byte.Parse(elementNormal2[kb].ToString());
                     }
                 }
+
+                // Projectiles
                 for (uint i = hitboxProjStart; i <= hitboxProjEnd; i++)
                 {
                     kb = rng.Next(0, KB_LEVELS);
-                    //Rolling stuff
+                    // Convert the knockback level to that within the element type of the pre-existing data
                     if (elementNormal.Contains(data[i]))
                     {
                         data[i] = byte.Parse(elementNormal[kb].ToString());
